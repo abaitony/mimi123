@@ -62,8 +62,6 @@ parser.add_argument('--threshold', help='Minimum confidence threshold for displa
                     default=0.5)
 parser.add_argument('--resolution', help='Desired webcam resolution in WxH. If the webcam does not support the resolution entered, errors may occur.',
                     default='1280x720')
-parser.add_argument('--edgetpu', help='Use Coral Edge TPU Accelerator to speed up detection',
-                    action='store_true')
 
 args = parser.parse_args()
 
@@ -73,7 +71,6 @@ LABELMAP_NAME = args.labels
 min_conf_threshold = float(args.threshold)
 resW, resH = args.resolution.split('x')
 imW, imH = int(resW), int(resH)
-use_TPU = args.edgetpu
 
 # Import TensorFlow libraries
 # If tensorflow is not installed, import interpreter from tflite_runtime, else import from regular tensorflow
@@ -81,18 +78,8 @@ use_TPU = args.edgetpu
 pkg = importlib.util.find_spec('tensorflow')
 if pkg is None:
     from tflite_runtime.interpreter import Interpreter
-    if use_TPU:
-        from tflite_runtime.interpreter import load_delegate
 else:
-    from tensorflow.lite.python.interpreter import Interpreter
-    if use_TPU:
-        from tensorflow.lite.python.interpreter import load_delegate
-
-# If using Edge TPU, assign filename for Edge TPU model
-if use_TPU:
-    # If user has specified the name of the .tflite file, use that name, otherwise use default 'edgetpu.tflite'
-    if (GRAPH_NAME == 'detect.tflite'):
-        GRAPH_NAME = 'edgetpu.tflite'       
+    from tensorflow.lite.python.interpreter import Interpreter     
 
 # Get path to current working directory
 CWD_PATH = os.getcwd()
@@ -114,14 +101,7 @@ if labels[0] == '???':
     del(labels[0])
 
 
-# Load the Tensorflow Lite model.
-# If using Edge TPU, use special load_delegate argument
-if use_TPU:
-    interpreter = Interpreter(model_path=PATH_TO_CKPT,
-                              experimental_delegates=[load_delegate('libedgetpu.so.1.0')])
-    print(PATH_TO_CKPT)
-else:
-    interpreter = Interpreter(model_path=PATH_TO_CKPT)
+interpreter = Interpreter(model_path=PATH_TO_CKPT)
 
 interpreter.allocate_tensors()
     
@@ -213,6 +193,3 @@ while True:
 # Clean up
 cv2.destroyAllWindows()
 videostream.stop()
-
-
-
